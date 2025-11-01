@@ -1,0 +1,19 @@
+function App() {
+  return (
+    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-6xl font-bold mb-4">
+          🎤 <span className="text-indigo-500">Mix</span>ForMe
+        </h1>
+        <p className="text-gray-400 text-xl">
+          Professional vocal mixing in your browser
+        </p>
+        <div className="mt-8 text-green-500 text-lg">
+          ✅ Setup Complete! Ready to build...
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default App
