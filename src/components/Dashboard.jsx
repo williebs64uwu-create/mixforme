@@ -1,25 +1,61 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Navbar from './Navbar'
 import AudioUploader from './AudioUploader'
 import AudioPlayer from './AudioPlayer'
-import { Disc3, Sparkles, Sliders, Download } from 'lucide-react'
+import Waveform from './Waveform'
+import ControlPanel from './ControlPanel'
+import { Disc3, Sparkles, Download, Check } from 'lucide-react'
+import { getPreset, getPresetList } from '../lib/presets'
+import AudioEngine from '../lib/audioEngine'
 
 function Dashboard() {
   const [vocalFile, setVocalFile] = useState(null)
   const [beatFile, setBeatFile] = useState(null)
   const [selectedPreset, setSelectedPreset] = useState('rap')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isProcessed, setIsProcessed] = useState(false)
+  const [audioBuffer, setAudioBuffer] = useState(null)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  
+  const audioEngineRef = useRef(null)
+  const presets = getPresetList()
 
-  const presets = [
-    { id: 'rap', name: 'Rap/Trap', emoji: '🎤', color: 'from-red-500 to-orange-500' },
-    { id: 'pop', name: 'Pop/Singing', emoji: '🎵', color: 'from-pink-500 to-purple-500' },
-    { id: 'podcast', name: 'Podcast', emoji: '🎙️', color: 'from-blue-500 to-cyan-500' },
-    { id: 'rnb', name: 'R&B/Soul', emoji: '🎹', color: 'from-purple-500 to-indigo-500' },
-    { id: 'rock', name: 'Rock/Metal', emoji: '🎸', color: 'from-orange-500 to-red-600' },
-  ]
+  // Initialize audio engine
+  useEffect(() => {
+    audioEngineRef.current = new AudioEngine()
+    return () => {
+      if (audioEngineRef.current) {
+        audioEngineRef.current.dispose()
+      }
+    }
+  }, [])
+
+  // Load vocal file into audio engine
+  useEffect(() => {
+    if (vocalFile && audioEngineRef.current) {
+      loadAudio()
+    }
+  }, [vocalFile])
+
+  const loadAudio = async () => {
+    try {
+      setIsProcessing(true)
+      const buffer = await audioEngineRef.current.loadAudioFile(vocalFile)
+      setAudioBuffer(buffer)
+      setDuration(buffer.duration)
+      setIsProcessing(false)
+    } catch (error) {
+      console.error('Error loading audio:', error)
+      alert('Error loading audio file. Please try a different file.')
+      setIsProcessing(false)
+    }
+  }
 
   const handleVocalUpload = (file) => {
     setVocalFile(file)
+    setIsProcessed(false)
   }
 
   const handleBeatUpload = (file) => {
@@ -28,21 +64,71 @@ function Dashboard() {
 
   const handleRemoveVocal = () => {
     setVocalFile(null)
+    setAudioBuffer(null)
+    setIsProcessed(false)
+    if (audioEngineRef.current) {
+      audioEngineRef.current.stop()
+    }
   }
 
   const handleRemoveBeat = () => {
     setBeatFile(null)
   }
 
+  const handlePresetChange = (presetId) => {
+    setSelectedPreset(presetId)
+    setIsProcessed(false)
+  }
+
   const handleProcess = () => {
-    if (!vocalFile) return
+    if (!vocalFile || !audioEngineRef.current) return
+    
     setIsProcessing(true)
-    // TODO: Implement audio processing
+    const preset = getPreset(selectedPreset)
+    
+    // Simulate processing time
     setTimeout(() => {
       setIsProcessing(false)
-      alert('Processing complete! (This is a placeholder)')
+      setIsProcessed(true)
+      alert(`Processing complete with ${preset.name} preset! 🎉`)
     }, 2000)
   }
+
+  const handleEQChange = (band, value) => {
+    if (audioEngineRef.current) {
+      audioEngineRef.current.updateEQ(band, value)
+    }
+  }
+
+  const handleCompressionChange = (value) => {
+    if (audioEngineRef.current) {
+      audioEngineRef.current.updateCompression(value)
+    }
+  }
+
+  const handleReset = () => {
+    setSelectedPreset('rap')
+    setIsProcessed(false)
+  }
+
+  const handleDownload = async () => {
+    if (!audioEngineRef.current || !isProcessed) return
+    
+    try {
+      const blob = await audioEngineRef.current.exportAudio()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${vocalFile.name.replace(/\.[^/.]+$/, '')}_processed.wav`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error exporting audio:', error)
+      alert('Error exporting audio. Please try again.')
+    }
+  }
+
+  const currentPreset = getPreset(selectedPreset)
 
   return (
     <div className="min-h-screen">
@@ -62,7 +148,7 @@ function Dashboard() {
         {/* Main Workspace */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           
-          {/* Upload & Player Section */}
+          {/* Upload & Visualization Section */}
           <div className="lg:col-span-2 space-y-6">
             
             {/* Vocal Upload */}
@@ -89,14 +175,34 @@ function Dashboard() {
               onRemove={handleRemoveBeat}
             />
 
+            {/* Waveform Visualization */}
+            <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-2xl p-6">
+              <h3 className="text-white font-semibold mb-4">Waveform</h3>
+              <Waveform 
+                audioBuffer={audioBuffer}
+                isPlaying={isPlaying}
+                currentTime={currentTime}
+                duration={duration}
+              />
+            </div>
+
             {/* Audio Player */}
             <AudioPlayer 
               vocalFile={vocalFile}
               beatFile={beatFile}
             />
+
+            {/* Control Panel */}
+            <ControlPanel
+              preset={currentPreset}
+              onEQChange={handleEQChange}
+              onCompressionChange={handleCompressionChange}
+              onReset={handleReset}
+              disabled={!vocalFile}
+            />
           </div>
 
-          {/* Presets & Controls Sidebar */}
+          {/* Presets & Actions Sidebar */}
           <div className="space-y-6">
             
             {/* Preset Selection */}
@@ -106,8 +212,9 @@ function Dashboard() {
                 {presets.map((preset) => (
                   <button
                     key={preset.id}
-                    onClick={() => setSelectedPreset(preset.id)}
-                    className={`w-full p-4 rounded-xl border-2 transition-all duration-300 text-left ${
+                    onClick={() => handlePresetChange(preset.id)}
+                    disabled={isProcessing}
+                    className={`w-full p-4 rounded-xl border-2 transition-all duration-300 text-left disabled:opacity-50 disabled:cursor-not-allowed ${
                       selectedPreset === preset.id
                         ? 'border-indigo-500 bg-indigo-500/10'
                         : 'border-gray-700 bg-gray-800/30 hover:border-gray-600'
@@ -123,31 +230,12 @@ function Dashboard() {
                           ))}
                         </div>
                       </div>
+                      {selectedPreset === preset.id && (
+                        <Check className="w-5 h-5 text-indigo-400" />
+                      )}
                     </div>
                   </button>
                 ))}
-              </div>
-            </div>
-
-            {/* Quick Controls */}
-            <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-2xl p-6">
-              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <Sliders className="w-5 h-5" />
-                Quick Tweaks
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm text-gray-400 mb-2 block">Compression</label>
-                  <input type="range" className="w-full" min="0" max="100" defaultValue="70" />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-400 mb-2 block">Brightness</label>
-                  <input type="range" className="w-full" min="0" max="100" defaultValue="50" />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-400 mb-2 block">Presence</label>
-                  <input type="range" className="w-full" min="0" max="100" defaultValue="60" />
-                </div>
               </div>
             </div>
 
@@ -161,18 +249,47 @@ function Dashboard() {
                   : 'bg-gray-700 text-gray-500 cursor-not-allowed'
               }`}
             >
-              <Sparkles className="w-5 h-5" />
-              {isProcessing ? 'Processing...' : 'Process Audio'}
+              {isProcessing ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Process Audio
+                </>
+              )}
             </button>
 
             {/* Download Button */}
             <button 
-              disabled={true}
-              className="w-full py-4 rounded-xl bg-gray-800/50 text-gray-500 font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
+              onClick={handleDownload}
+              disabled={!isProcessed}
+              className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 ${
+                isProcessed
+                  ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/30'
+                  : 'bg-gray-800/50 text-gray-500 cursor-not-allowed'
+              }`}
             >
               <Download className="w-5 h-5" />
-              Download (Process first)
+              {isProcessed ? 'Download Processed Audio' : 'Download (Process first)'}
             </button>
+
+            {/* Status Info */}
+            {isProcessed && (
+              <div className="backdrop-blur-xl bg-green-900/20 border border-green-500/30 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Check className="w-5 h-5 text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-green-400 font-semibold">Ready to Download!</p>
+                    <p className="text-sm text-gray-400">Your audio has been processed</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -185,7 +302,9 @@ function Dashboard() {
             <p className="text-sm text-gray-500">Tracks Loaded</p>
           </div>
           <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-purple-400">Ready</p>
+            <p className="text-3xl font-bold text-purple-400">
+              {isProcessing ? 'Processing' : isProcessed ? 'Done' : 'Ready'}
+            </p>
             <p className="text-sm text-gray-500">Status</p>
           </div>
           <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-xl p-4 text-center">
