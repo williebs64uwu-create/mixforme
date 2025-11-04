@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import Navbar from './Navbar'
-import { Upload, Disc3, Play, Pause, Download, Sparkles, Sliders } from 'lucide-react'
+import AudioUploader from './AudioUploader'
+import AudioPlayer from './AudioPlayer'
+import { Disc3, Sparkles, Sliders, Download } from 'lucide-react'
 
 function Dashboard() {
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [vocalFile, setVocalFile] = useState(null)
+  const [beatFile, setBeatFile] = useState(null)
   const [selectedPreset, setSelectedPreset] = useState('rap')
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const presets = [
     { id: 'rap', name: 'Rap/Trap', emoji: '🎤', color: 'from-red-500 to-orange-500' },
@@ -13,6 +17,32 @@ function Dashboard() {
     { id: 'rnb', name: 'R&B/Soul', emoji: '🎹', color: 'from-purple-500 to-indigo-500' },
     { id: 'rock', name: 'Rock/Metal', emoji: '🎸', color: 'from-orange-500 to-red-600' },
   ]
+
+  const handleVocalUpload = (file) => {
+    setVocalFile(file)
+  }
+
+  const handleBeatUpload = (file) => {
+    setBeatFile(file)
+  }
+
+  const handleRemoveVocal = () => {
+    setVocalFile(null)
+  }
+
+  const handleRemoveBeat = () => {
+    setBeatFile(null)
+  }
+
+  const handleProcess = () => {
+    if (!vocalFile) return
+    setIsProcessing(true)
+    // TODO: Implement audio processing
+    setTimeout(() => {
+      setIsProcessing(false)
+      alert('Processing complete! (This is a placeholder)')
+    }, 2000)
+  }
 
   return (
     <div className="min-h-screen">
@@ -32,68 +62,38 @@ function Dashboard() {
         {/* Main Workspace */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           
-          {/* Upload Section */}
+          {/* Upload & Player Section */}
           <div className="lg:col-span-2 space-y-6">
             
             {/* Vocal Upload */}
-            <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-2xl p-6 hover:border-indigo-500/30 transition-all duration-300">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                  <Disc3 className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold">Vocal Track</h3>
-                  <p className="text-sm text-gray-500">Upload your vocal recording</p>
-                </div>
-              </div>
-              
-              <div className="border-2 border-dashed border-gray-700 rounded-xl p-12 text-center hover:border-indigo-500/50 transition-all duration-300 cursor-pointer group">
-                <Upload className="w-12 h-12 text-gray-600 mx-auto mb-4 group-hover:text-indigo-400 transition-colors" />
-                <p className="text-gray-400 mb-2">Drop your vocal file here or click to browse</p>
-                <p className="text-sm text-gray-600">Supports: WAV, MP3, M4A (Max 50MB)</p>
-              </div>
-            </div>
+            <AudioUploader
+              title="Vocal Track"
+              subtitle="Upload your vocal recording"
+              icon={Disc3}
+              iconColor="from-indigo-500 to-purple-600"
+              borderColor="border-gray-800/50"
+              onFileUpload={handleVocalUpload}
+              file={vocalFile}
+              onRemove={handleRemoveVocal}
+            />
 
             {/* Beat Upload */}
-            <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-2xl p-6 hover:border-purple-500/30 transition-all duration-300">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold">Instrumental/Beat</h3>
-                  <p className="text-sm text-gray-500">Optional - for preview in context</p>
-                </div>
-              </div>
-              
-              <div className="border-2 border-dashed border-gray-700 rounded-xl p-12 text-center hover:border-purple-500/50 transition-all duration-300 cursor-pointer group">
-                <Upload className="w-12 h-12 text-gray-600 mx-auto mb-4 group-hover:text-purple-400 transition-colors" />
-                <p className="text-gray-400 mb-2">Drop your beat here (optional)</p>
-                <p className="text-sm text-gray-600">Hear your processed vocal with the beat</p>
-              </div>
-            </div>
+            <AudioUploader
+              title="Instrumental/Beat"
+              subtitle="Optional - for preview in context"
+              icon={Sparkles}
+              iconColor="from-purple-500 to-pink-600"
+              borderColor="border-gray-800/50"
+              onFileUpload={handleBeatUpload}
+              file={beatFile}
+              onRemove={handleRemoveBeat}
+            />
 
-            {/* Waveform Visualization Placeholder */}
-            <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-2xl p-6">
-              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <Sliders className="w-5 h-5" />
-                Waveform & Preview
-              </h3>
-              <div className="h-32 bg-gradient-to-r from-indigo-950/50 to-purple-950/50 rounded-xl flex items-center justify-center border border-gray-800/30">
-                <p className="text-gray-600">Upload audio to see waveform</p>
-              </div>
-              
-              {/* Playback Controls */}
-              <div className="flex items-center justify-center gap-4 mt-6">
-                <button className="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center hover:from-indigo-500 hover:to-purple-500 transition-all duration-200">
-                  <Play className="w-5 h-5 text-white ml-1" />
-                </button>
-                <div className="flex-1 h-2 bg-gray-800 rounded-full">
-                  <div className="h-full w-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"></div>
-                </div>
-                <span className="text-sm text-gray-500">0:00 / 0:00</span>
-              </div>
-            </div>
+            {/* Audio Player */}
+            <AudioPlayer 
+              vocalFile={vocalFile}
+              beatFile={beatFile}
+            />
           </div>
 
           {/* Presets & Controls Sidebar */}
@@ -129,9 +129,12 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Quick Controls Placeholder */}
+            {/* Quick Controls */}
             <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-2xl p-6">
-              <h3 className="text-white font-semibold mb-4">Quick Tweaks</h3>
+              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                <Sliders className="w-5 h-5" />
+                Quick Tweaks
+              </h3>
               <div className="space-y-4">
                 <div>
                   <label className="text-sm text-gray-400 mb-2 block">Compression</label>
@@ -149,13 +152,24 @@ function Dashboard() {
             </div>
 
             {/* Process Button */}
-            <button className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-lg transition-all duration-300 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 flex items-center justify-center gap-2">
+            <button 
+              onClick={handleProcess}
+              disabled={!vocalFile || isProcessing}
+              className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+                vocalFile && !isProcessing
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50'
+                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              }`}
+            >
               <Sparkles className="w-5 h-5" />
-              Process Audio
+              {isProcessing ? 'Processing...' : 'Process Audio'}
             </button>
 
-            {/* Download Button (disabled state) */}
-            <button className="w-full py-4 rounded-xl bg-gray-800/50 text-gray-500 font-semibold flex items-center justify-center gap-2 cursor-not-allowed">
+            {/* Download Button */}
+            <button 
+              disabled={true}
+              className="w-full py-4 rounded-xl bg-gray-800/50 text-gray-500 font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
+            >
               <Download className="w-5 h-5" />
               Download (Process first)
             </button>
@@ -165,16 +179,18 @@ function Dashboard() {
         {/* Stats Footer */}
         <div className="grid grid-cols-3 gap-6">
           <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-indigo-400">0</p>
-            <p className="text-sm text-gray-500">Tracks Processed</p>
+            <p className="text-3xl font-bold text-indigo-400">
+              {vocalFile ? '1' : '0'}
+            </p>
+            <p className="text-sm text-gray-500">Tracks Loaded</p>
           </div>
           <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-purple-400">0s</p>
-            <p className="text-sm text-gray-500">Processing Time</p>
+            <p className="text-3xl font-bold text-purple-400">Ready</p>
+            <p className="text-sm text-gray-500">Status</p>
           </div>
           <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-pink-400">Pro</p>
-            <p className="text-sm text-gray-500">Quality Level</p>
+            <p className="text-3xl font-bold text-pink-400">{selectedPreset.toUpperCase()}</p>
+            <p className="text-sm text-gray-500">Selected Preset</p>
           </div>
         </div>
       </div>
