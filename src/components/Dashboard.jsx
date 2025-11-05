@@ -4,6 +4,10 @@ import AudioUploader from './AudioUploader'
 import AudioPlayer from './AudioPlayer'
 import Waveform from './Waveform'
 import ControlPanel from './ControlPanel'
+import SpectrumAnalyzer from './SpectrumAnalyzer'
+import VUMeter from './VUMeter'
+import ProcessingChain from './ProcessingChain'
+import ABComparison from './ABComparison'
 import { Disc3, Sparkles, Download, Check } from 'lucide-react'
 import { getPreset, getPresetList } from '../lib/presets'
 import AudioEngine from '../lib/audioEngine'
@@ -18,6 +22,7 @@ function Dashboard() {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [abMode, setABMode] = useState('A')
   
   const audioEngineRef = useRef(null)
   const presets = getPresetList()
@@ -128,6 +133,12 @@ function Dashboard() {
     }
   }
 
+  const handleABToggle = (mode) => {
+    setABMode(mode)
+    // TODO: Switch between original and processed audio
+    console.log('Switched to mode:', mode)
+  }
+
   const currentPreset = getPreset(selectedPreset)
 
   return (
@@ -190,6 +201,25 @@ function Dashboard() {
             <AudioPlayer 
               vocalFile={vocalFile}
               beatFile={beatFile}
+            />
+
+            {/* Spectrum Analyzer */}
+            <SpectrumAnalyzer
+              audioEngine={audioEngineRef.current}
+              isPlaying={isPlaying}
+            />
+
+            {/* VU Meters */}
+            <VUMeter
+              audioEngine={audioEngineRef.current}
+              isPlaying={isPlaying}
+              label="OUTPUT"
+            />
+
+            {/* Processing Chain Visualization */}
+            <ProcessingChain
+              isProcessing={isProcessing}
+              preset={currentPreset}
             />
 
             {/* Control Panel */}
@@ -275,6 +305,14 @@ function Dashboard() {
               <Download className="w-5 h-5" />
               {isProcessed ? 'Download Processed Audio' : 'Download (Process first)'}
             </button>
+
+            {/* A/B Comparison */}
+            <ABComparison
+              onToggle={handleABToggle}
+              isProcessed={isProcessed}
+              currentMode={abMode}
+              disabled={!vocalFile}
+            />
 
             {/* Status Info */}
             {isProcessed && (
