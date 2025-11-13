@@ -1,51 +1,28 @@
 import { useState, useEffect, useRef } from 'react'
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
 
-function AudioPlayer({ vocalFile, beatFile }) {
+function AudioPlayer({ audioEngine, preset, isProcessed, onPlayStateChange }) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.7)
   const [isMuted, setIsMuted] = useState(false)
   
-  const vocalAudioRef = useRef(null)
-  const beatAudioRef = useRef(null)
+  const startTimeRef = useRef(0)
+  const playStartTimeRef = useRef(0)
   const animationFrameRef = useRef(null)
 
   useEffect(() => {
-    // Load vocal audio
-    if (vocalFile && vocalAudioRef.current) {
-      const url = URL.createObjectURL(vocalFile)
-      vocalAudioRef.current.src = url
-      vocalAudioRef.current.volume = volume
-      
-      vocalAudioRef.current.addEventListener('loadedmetadata', () => {
-        setDuration(vocalAudioRef.current.duration)
-      })
-
-      return () => URL.revokeObjectURL(url)
+    if (audioEngine?.audioBuffer) {
+      setDuration(audioEngine.audioBuffer.duration)
     }
-  }, [vocalFile])
+  }, [audioEngine?.audioBuffer])
 
   useEffect(() => {
-    // Load beat audio
-    if (beatFile && beatAudioRef.current) {
-      const url = URL.createObjectURL(beatFile)
-      beatAudioRef.current.src = url
-      beatAudioRef.current.volume = volume * 0.6 // Beat slightly quieter
-      
-      return () => URL.revokeObjectURL(url)
+    if (audioEngine) {
+      audioEngine.updateVolume(isMuted ? 0 : volume)
     }
-  }, [beatFile])
-
-  useEffect(() => {
-    if (vocalAudioRef.current) {
-      vocalAudioRef.current.volume = isMuted ? 0 : volume
-    }
-    if (beatAudioRef.current) {
-      beatAudioRef.current.volume = isMuted ? 0 : volume * 0.6
-    }
-  }, [volume, isMuted])
+  }, [volume, isMuted, audioEngine])
 
   const updateTime = () => {
     if (vocalAudioRef.current) {
