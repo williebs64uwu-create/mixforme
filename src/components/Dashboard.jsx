@@ -30,6 +30,7 @@ function Dashboard() {
   // Initialize audio engine
   useEffect(() => {
     audioEngineRef.current = new AudioEngine()
+    audioEngineRef.current.init()
     return () => {
       if (audioEngineRef.current) {
         audioEngineRef.current.dispose()
@@ -37,12 +38,20 @@ function Dashboard() {
     }
   }, [])
 
-  // Load vocal file into audio engine
+  // Load vocal file into audio engine and create processing chain
   useEffect(() => {
     if (vocalFile && audioEngineRef.current) {
       loadAudio()
     }
   }, [vocalFile])
+
+  // Update processing chain when preset changes
+  useEffect(() => {
+    if (audioEngineRef.current && audioBuffer) {
+      const preset = getPreset(selectedPreset)
+      audioEngineRef.current.createProcessingChain(preset)
+    }
+  }, [selectedPreset, audioBuffer])
 
   const loadAudio = async () => {
     try {
