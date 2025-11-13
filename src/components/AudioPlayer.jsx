@@ -25,37 +25,53 @@ function AudioPlayer({ audioEngine, preset, isProcessed, onPlayStateChange }) {
   }, [volume, isMuted, audioEngine])
 
   const updateTime = () => {
-    if (vocalAudioRef.current) {
-      setCurrentTime(vocalAudioRef.current.currentTime)
-      animationFrameRef.current = requestAnimationFrame(updateTime)
+    const elapsed = (audioEngine.audioContext.currentTime - playStartTimeRef.current)
+    const newTime = startTimeRef.current + elapsed
+    
+    if (newTime >= duration) {
+      setIsPlaying(false)
+      setCurrentTime(0)
+      if (onPlayStateChange) onPlayStateChange(false)
+      return
     }
+    
+    setCurrentTime(newTime)
+    animationFrameRef.current = requestAnimationFrame(updateTime)
   }
 
-  const togglePlayPause = () => {
-    if (!vocalFile) return
+  const togglePlayPause = async () => {
+    if (!audioEngine?.audioBuffer || !preset) return
+
+    // Resume context if needed
+    await audioEngine.resumeContext()
 
     if (isPlaying) {
-      vocalAudioRef.current?.pause()
-      beatAudioRef.current?.pause()
+      audioEngine.stop()
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
+      startTimeRef.current = currentTime
     } else {
-      vocalAudioRef.current?.play()
-      beatAudioRef.current?.play()
+      audioEngine.play(preset)
+      playStartTimeRef.current = audioEngine.audioContext.currentTime
+      startTimeRef.current = currentTime
       animationFrameRef.current = requestAnimationFrame(updateTime)
     }
-    setIsPlaying(!isPlaying)
+    
+    const newState = !isPlaying
+    setIsPlaying(newState)
+    if (onPlayStateChange) onPlayStateChange(newState)
   }
 
   const handleSeek = (e) => {
     const seekTime = parseFloat(e.target.value)
     setCurrentTime(seekTime)
-    if (vocalAudioRef.current) {
-      vocalAudioRef.current.currentTime = seekTime
-    }
-    if (beatAudioRef.current) {
-      beatAudioRef.current.currentTime = seekTime
+    startTimeRef.current = seekTime
+    
+    if (isPlaying && audioEngine && preset) {
+      audioEngine.stop()
+      audioEngine.playFrom(preset, seekTime)
+      playStartTimeRef.current = audioEngine.audioContext.currentTime
     }
   }
 
@@ -81,13 +97,9 @@ function AudioPlayer({ audioEngine, preset, isProcessed, onPlayStateChange }) {
     <div className="backdrop-blur-xl bg-gray-900/40 border border-gray-800/50 rounded-2xl p-6">
       <h3 className="text-white font-semibold mb-4">Audio Player</h3>
       
-      {/* Hidden audio elements */}
-      <audio ref={vocalAudioRef} />
-      <audio ref={beatAudioRef} />
-      
       {/* Waveform visualization placeholder */}
       <div className="h-32 bg-gradient-to-r from-indigo-950/50 to-purple-950/50 rounded-xl flex items-center justify-center border border-gray-800/30 mb-4 relative overflow-hidden">
-        {vocalFile ? (
+        {audioEngine?.audioBuffer ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="flex gap-1 items-end h-24">
               {[...Array(50)].map((_, i) => (
@@ -96,7 +108,7 @@ function AudioPlayer({ audioEngine, preset, isProcessed, onPlayStateChange }) {
                   className="w-1 bg-gradient-to-t from-indigo-500 to-purple-500 rounded-full transition-all"
                   style={{
                     height: `${20 + Math.random() * 80}%`,
-                    opacity: i / 50 < progress / 100 ? 1 : 0.3
+                    opacity: i / 50 < (currentTime / duration) ? 1 : 0.3
                   }}
                 />
               ))}
@@ -130,9 +142,9 @@ function AudioPlayer({ audioEngine, preset, isProcessed, onPlayStateChange }) {
             {/* Play/Pause Button */}
             <button
               onClick={togglePlayPause}
-              disabled={!vocalFile}
+              disabled={!audioEngine?.audioBuffer}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 ${
-                vocalFile
+                audioEngine?.audioBuffer
                   ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500'
                   : 'bg-gray-700 cursor-not-allowed'
               }`}
@@ -147,11 +159,11 @@ function AudioPlayer({ audioEngine, preset, isProcessed, onPlayStateChange }) {
             {/* Track Info */}
             <div>
               <p className="text-sm text-white font-medium">
-                {vocalFile ? vocalFile.name : 'No audio loaded'}
+                {audioEngine?.audioBuffer ? 'Vocal Track' : 'No audio loaded'}
               </p>
-              {beatFile && (
-                <p className="text-xs text-gray-500">
-                  + {beatFile.name}
+              {isProcessed && (
+                <p className="text-xs text-green-400">
+                  ✓ Processed
                 </p>
               )}
             </div>
