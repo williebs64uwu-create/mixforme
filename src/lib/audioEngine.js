@@ -51,13 +51,12 @@ class AudioEngine {
     })
   }
 
-  // Create audio processing chain
+  // Create persistent audio processing chain (doesn't require source)
   createProcessingChain(preset) {
-    if (!this.audioBuffer) return null
+    if (!this.audioContext) return
     
-    // Create source
-    this.sourceNode = this.audioContext.createBufferSource()
-    this.sourceNode.buffer = this.audioBuffer
+    // Disconnect existing nodes
+    this.disconnectChain()
     
     // Create gain (volume control)
     this.gainNode = this.audioContext.createGain()
@@ -65,11 +64,11 @@ class AudioEngine {
     
     // Create compressor
     this.compressorNode = this.audioContext.createDynamicsCompressor()
-    this.compressorNode.threshold.value = preset.compressor.threshold
-    this.compressorNode.knee.value = preset.compressor.knee
-    this.compressorNode.ratio.value = preset.compressor.ratio
-    this.compressorNode.attack.value = preset.compressor.attack
-    this.compressorNode.release.value = preset.compressor.release
+    this.compressorNode.threshold.value = preset.settings.compressor.threshold
+    this.compressorNode.knee.value = preset.settings.compressor.knee
+    this.compressorNode.ratio.value = preset.settings.compressor.ratio
+    this.compressorNode.attack.value = preset.settings.compressor.attack
+    this.compressorNode.release.value = preset.settings.compressor.release
     
     // Create EQ (3-band)
     this.eqNodes = []
@@ -78,7 +77,7 @@ class AudioEngine {
     const lowShelf = this.audioContext.createBiquadFilter()
     lowShelf.type = 'lowshelf'
     lowShelf.frequency.value = 200
-    lowShelf.gain.value = preset.eq.low
+    lowShelf.gain.value = preset.settings.eq.low
     this.eqNodes.push(lowShelf)
     
     // Mid band
@@ -86,29 +85,64 @@ class AudioEngine {
     midPeak.type = 'peaking'
     midPeak.frequency.value = 1000
     midPeak.Q.value = 1
-    midPeak.gain.value = preset.eq.mid
+    midPeak.gain.value = preset.settings.eq.mid
     this.eqNodes.push(midPeak)
     
     // High band (treble)
     const highShelf = this.audioContext.createBiquadFilter()
     highShelf.type = 'highshelf'
     highShelf.frequency.value = 3000
-    highShelf.gain.value = preset.eq.high
+    highShelf.gain.value = preset.settings.eq.high
     this.eqNodes.push(highShelf)
     
     // Create analyzer for visualization
     this.analyzerNode = this.audioContext.createAnalyser()
     this.analyzerNode.fftSize = 2048
+    this.analyzerNode.smoothingTimeConstant = 0.8
     
-    // Connect the chain
-    this.sourceNode
-      .connect(this.compressorNode)
+    // Connect the persistent chain (without source yet)
+    this.compressorNode
       .connect(this.eqNodes[0])
       .connect(this.eqNodes[1])
       .connect(this.eqNodes[2])
       .connect(this.gainNode)
       .connect(this.analyzerNode)
       .connect(this.audioContext.destination)
+    
+    console.log('Processing chain created')
+  }
+
+  // Disconnect all nodes
+  disconnectChain() {
+    if (this.sourceNode) {
+      try { this.sourceNode.disconnect() } catch (e) {}
+    }
+    if (this.compressorNode) {
+      try { this.compressorNode.disconnect() } catch (e) {}
+    }
+    if (this.eqNodes.length > 0) {
+      this.eqNodes.forEach(node => {
+        try { node.disconnect() } catch (e) {}
+      })
+    }
+    if (this.gainNode) {
+      try { this.gainNode.disconnect() } catch (e) {}
+    }
+    if (this.analyzerNode) {
+      try { this.analyzerNode.disconnect() } catch (e) {}
+    }
+  }
+
+  // Connect source to processing chain
+  connectSource() {
+    if (!this.audioBuffer || !this.compressorNode) return null
+    
+    // Create new source
+    this.sourceNode = this.audioContext.createBufferSource()
+    this.sourceNode.buffer = this.audioBuffer
+    
+    // Connect to chain
+    this.sourceNode.connect(this.compressorNode)
     
     return this.sourceNode
   }
