@@ -94,24 +94,39 @@ function Dashboard() {
     setIsProcessed(false)
   }
 
-  const handleProcess = () => {
+  const handleProcess = async () => {
     if (!vocalFile || !audioEngineRef.current) return
     
     setIsProcessing(true)
     const preset = getPreset(selectedPreset)
     
-    // Simulate processing time
-    setTimeout(() => {
+    try {
+      // Process audio and create processed buffer
+      await audioEngineRef.current.processAudio(preset)
+      
+      // Switch to processed version
+      audioEngineRef.current.switchToProcessed()
+      
+      // Recreate processing chain for the processed buffer
+      audioEngineRef.current.createProcessingChain(preset)
+      
       setIsProcessing(false)
       setIsProcessed(true)
-      alert(`Processing complete with ${preset.name} preset! 🎉`)
-    }, 2000)
+      setABMode('B') // Switch to processed view
+    } catch (error) {
+      console.error('Processing error:', error)
+      setIsProcessing(false)
+      alert('Error processing audio. Please try again.')
+    }
   }
 
   const handleEQChange = (band, value) => {
     if (audioEngineRef.current) {
       audioEngineRef.current.updateEQ(band, value)
     }
+    // Update preset settings for display
+    const preset = getPreset(selectedPreset)
+    preset.settings.eq[band] = value
   }
 
   const handleCompressionChange = (value) => {
@@ -121,8 +136,15 @@ function Dashboard() {
   }
 
   const handleReset = () => {
-    setSelectedPreset('rap')
+    const preset = getPreset(selectedPreset)
+    if (audioEngineRef.current && audioBuffer) {
+      audioEngineRef.current.createProcessingChain(preset)
+    }
     setIsProcessed(false)
+  }
+
+  const handlePlayStateChange = (playing) => {
+    setIsPlaying(playing)
   }
 
   const handleDownload = async () => {
@@ -208,8 +230,10 @@ function Dashboard() {
 
             {/* Audio Player */}
             <AudioPlayer 
-              vocalFile={vocalFile}
-              beatFile={beatFile}
+              audioEngine={audioEngineRef.current}
+              preset={currentPreset}
+              isProcessed={isProcessed}
+              onPlayStateChange={handlePlayStateChange}
             />
 
             {/* Spectrum Analyzer */}
