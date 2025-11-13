@@ -8,14 +8,15 @@ class AudioEngine {
     this.compressorNode = null
     this.eqNodes = []
     this.analyzerNode = null
-    this.destinationNode = null
     
     // Audio buffers
-    this.audioBuffer = null
-    this.processedBuffer = null
+    this.originalBuffer = null  // Store original
+    this.processedBuffer = null // Store processed
+    this.currentBuffer = null   // Currently playing
     
     // State
     this.isInitialized = false
+    this.isProcessing = false
   }
 
   // Initialize Audio Context
@@ -153,9 +154,31 @@ class AudioEngine {
     
     this.stop() // Stop any current playback
     
-    const source = this.createProcessingChain(preset)
+    // Create processing chain if not exists
+    if (!this.compressorNode) {
+      this.createProcessingChain(preset)
+    }
+    
+    // Connect new source
+    const source = this.connectSource()
     if (source) {
       source.start(0)
+    }
+  }
+
+  // Play from specific time
+  playFrom(preset, startTime) {
+    if (!this.audioBuffer) return
+    
+    this.stop()
+    
+    if (!this.compressorNode) {
+      this.createProcessingChain(preset)
+    }
+    
+    const source = this.connectSource()
+    if (source) {
+      source.start(0, startTime)
     }
   }
 
@@ -164,10 +187,18 @@ class AudioEngine {
     if (this.sourceNode) {
       try {
         this.sourceNode.stop()
+        this.sourceNode.disconnect()
       } catch (e) {
         // Already stopped
       }
       this.sourceNode = null
+    }
+  }
+
+  // Resume audio context if suspended
+  async resumeContext() {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      await this.audioContext.resume()
     }
   }
 
@@ -298,6 +329,7 @@ class AudioEngine {
   // Clean up
   dispose() {
     this.stop()
+    this.disconnectChain()
     if (this.audioContext) {
       this.audioContext.close()
     }
