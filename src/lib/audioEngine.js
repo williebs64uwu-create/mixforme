@@ -149,16 +149,17 @@ class AudioEngine {
   }
 
   // Play audio with processing
-  play(preset) {
-    if (!this.audioBuffer) return
-    
+  play() {
+    if (!this.currentBuffer) return
+
     this.stop() // Stop any current playback
-    
+
     // Create processing chain if not exists
     if (!this.compressorNode) {
-      this.createProcessingChain(preset)
+      // Create a basic chain for playback (preset not needed for A/B comparison)
+      this.createBasicProcessingChain()
     }
-    
+
     // Connect new source
     const source = this.connectSource()
     if (source) {
@@ -167,19 +168,41 @@ class AudioEngine {
   }
 
   // Play from specific time
-  playFrom(preset, startTime) {
-    if (!this.audioBuffer) return
-    
+  playFrom(startTime) {
+    if (!this.currentBuffer) return
+
     this.stop()
-    
+
     if (!this.compressorNode) {
-      this.createProcessingChain(preset)
+      this.createBasicProcessingChain()
     }
-    
+
     const source = this.connectSource()
     if (source) {
       source.start(0, startTime)
     }
+  }
+
+  // Create basic processing chain for playback (neutral settings)
+  createBasicProcessingChain() {
+    if (!this.audioContext) return
+
+    // Disconnect existing nodes
+    this.disconnectChain()
+
+    // Create gain (volume control)
+    this.gainNode = this.audioContext.createGain()
+    this.gainNode.gain.value = 1.0
+
+    // Create analyzer for visualization
+    this.analyzerNode = this.audioContext.createAnalyser()
+    this.analyzerNode.fftSize = 2048
+    this.analyzerNode.smoothingTimeConstant = 0.8
+
+    // Connect the basic chain (without source yet)
+    this.gainNode.connect(this.analyzerNode).connect(this.audioContext.destination)
+
+    console.log('Basic processing chain created')
   }
 
   // Stop playback
