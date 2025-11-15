@@ -298,9 +298,9 @@ class AudioEngine {
     highPass.Q.value = 1
     nodes.push(highPass)
 
-    // 2. De-esser (frequency-dependent compression)
-    const deesserNodes = this.createDeesser(context, preset.settings.deEsser)
-    nodes.push(...deesserNodes)
+    // 2. De-esser (single node implementation)
+    const deesser = this.createDeesser(context, preset.settings.deEsser)
+    nodes.push(deesser)
 
     // 3. Compressor (from preset settings)
     const compressor = context.createDynamicsCompressor()
