@@ -442,6 +442,30 @@ class AudioEngine {
     return delayGain
   }
 
+  // Switch to original audio buffer for A/B comparison
+  switchToOriginal() {
+    if (!this.originalBuffer) return
+
+    // Stop current playback
+    this.stop()
+
+    // Set original buffer for next playback
+    this.audioBuffer = this.originalBuffer
+    this.currentBuffer = this.originalBuffer
+  }
+
+  // Switch to processed audio buffer for A/B comparison
+  switchToProcessed() {
+    if (!this.processedBuffer) return
+
+    // Stop current playback
+    this.stop()
+
+    // Set processed buffer for next playback
+    this.audioBuffer = this.processedBuffer
+    this.currentBuffer = this.processedBuffer
+  }
+
   // Export processed audio
   async exportAudio() {
     if (!this.audioBuffer) return null
