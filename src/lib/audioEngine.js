@@ -323,14 +323,14 @@ class AudioEngine {
 
     // 6. Reverb (algorithmic)
     if (preset.settings.effects.reverb > 0) {
-      const reverbNodes = this.createReverb(context, preset.settings.effects.reverb)
-      nodes.push(...reverbNodes)
+      const reverb = this.createReverb(context, preset.settings.effects.reverb)
+      nodes.push(reverb)
     }
 
     // 7. Delay (feedback with feedback control)
     if (preset.settings.effects.delay > 0) {
-      const delayNodes = this.createDelay(context, preset.settings.effects.delay)
-      nodes.push(...delayNodes)
+      const delay = this.createDelay(context, preset.settings.effects.delay)
+      nodes.push(delay)
     }
 
     // 8. Limiter (prevent clipping)
