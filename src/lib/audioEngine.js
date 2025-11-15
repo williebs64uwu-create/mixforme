@@ -287,6 +287,221 @@ class AudioEngine {
     this.currentBuffer = this.processedBuffer
   }
 
+  // Build complete offline processing chain with all effects
+  buildOfflineChain(context, preset) {
+    const nodes = []
+
+    // 1. High-pass filter (100Hz, 12dB/octave)
+    const highPass = context.createBiquadFilter()
+    highPass.type = 'highpass'
+    highPass.frequency.value = 100
+    highPass.Q.value = 1
+    nodes.push(highPass)
+
+    // 2. De-esser (frequency-dependent compression)
+    const deesserNodes = this.createDeesser(context, preset.settings.deEsser)
+    nodes.push(...deesserNodes)
+
+    // 3. Compressor (from preset settings)
+    const compressor = context.createDynamicsCompressor()
+    compressor.threshold.value = preset.settings.compressor.threshold
+    compressor.knee.value = preset.settings.compressor.knee
+    compressor.ratio.value = preset.settings.compressor.ratio
+    compressor.attack.value = preset.settings.compressor.attack
+    compressor.release.value = preset.settings.compressor.release
+    nodes.push(compressor)
+
+    // 4. 3-band EQ (low/mid/high shelves)
+    const eqNodes = this.createEQ(context, preset.settings.eq)
+    nodes.push(...eqNodes)
+
+    // 5. Saturation (soft clipping distortion)
+    if (preset.settings.effects.saturation > 0) {
+      const saturator = this.createSaturation(context, preset.settings.effects.saturation)
+      nodes.push(saturator)
+    }
+
+    // 6. Reverb (algorithmic)
+    if (preset.settings.effects.reverb > 0) {
+      const reverbNodes = this.createReverb(context, preset.settings.effects.reverb)
+      nodes.push(...reverbNodes)
+    }
+
+    // 7. Delay (feedback with feedback control)
+    if (preset.settings.effects.delay > 0) {
+      const delayNodes = this.createDelay(context, preset.settings.effects.delay)
+      nodes.push(...delayNodes)
+    }
+
+    // 8. Limiter (prevent clipping)
+    const limiter = context.createDynamicsCompressor()
+    limiter.threshold.value = -1  // Start limiting at -1dB
+    limiter.ratio.value = 20      // Very high ratio for limiting
+    limiter.knee.value = 1        // Hard knee
+    limiter.attack.value = 0.001  // Fast attack
+    limiter.release.value = 0.1    // Moderate release
+    nodes.push(limiter)
+
+    return nodes
+  }
+
+  // Create de-esser effect (split and compress high frequencies)
+  createDeesser(context, deessSettings) {
+    const nodes = []
+
+    // Split at crossover frequency
+    const lowpass = context.createBiquadFilter()
+    lowpass.type = 'lowpass'
+    lowpass.frequency.value = deessSettings.frequency
+    nodes.push(lowpass)
+
+    const highpass = context.createBiquadFilter()
+    highpass.type = 'highpass'
+    highpass.frequency.value = deessSettings.frequency
+    nodes.push(highpass)
+
+    // Compress high frequencies
+    const deesser = context.createDynamicsCompressor()
+    deesser.threshold.value = deessSettings.threshold
+    deesser.ratio.value = 8      // High ratio for de-essing
+    deesser.attack.value = 0.001 // Fast attack
+    deesser.release.value = 0.05 // Fast release
+    nodes.push(deesser)
+
+    // Merge signals back together
+    const lowGain = context.createGain()
+    lowGain.gain.value = 1.0
+    nodes.push(lowGain)
+
+    const highGain = context.createGain()
+    highGain.gain.value = 1.0
+    nodes.push(highGain)
+
+    const merger = context.createGain()
+    merger.gain.value = 1.0
+    nodes.push(merger)
+
+    return nodes
+  }
+
+  // Create 3-band EQ
+  createEQ(context, eqSettings) {
+    const nodes = []
+
+    // Low band (bass shelf)
+    const lowShelf = context.createBiquadFilter()
+    lowShelf.type = 'lowshelf'
+    lowShelf.frequency.value = 200
+    lowShelf.gain.value = eqSettings.low
+    nodes.push(lowShelf)
+
+    // Mid band (peaking)
+    const midPeak = context.createBiquadFilter()
+    midPeak.type = 'peaking'
+    midPeak.frequency.value = 1000
+    midPeak.Q.value = 1
+    midPeak.gain.value = eqSettings.mid
+    nodes.push(midPeak)
+
+    // High band (treble shelf)
+    const highShelf = context.createBiquadFilter()
+    highShelf.type = 'highshelf'
+    highShelf.frequency.value = 3000
+    highShelf.gain.value = eqSettings.high
+    nodes.push(highShelf)
+
+    return nodes
+  }
+
+  // Create saturation effect using waveshaper
+  createSaturation(context, amount) {
+    // Create soft-clipping curve for warm saturation
+    const curve = new Float32Array(65536)
+    for (let i = 0; i < 65536; i++) {
+      const x = (i / 65536) * 2 - 1
+      curve[i] = Math.tanh(x * amount * 3)  // Scale with amount
+    }
+
+    const saturator = context.createWaveShaper()
+    saturator.curve = curve
+    saturator.oversample = '4x' // Reduce aliasing
+
+    return saturator
+  }
+
+  // Create algorithmic reverb
+  createReverb(context, amount) {
+    const nodes = []
+
+    // Simple algorithmic reverb using multiple delay lines
+    const delay1 = context.createDelay(0.1)
+    delay1.delayTime.value = 0.03
+    nodes.push(delay1)
+
+    const delay2 = context.createDelay(0.1)
+    delay2.delayTime.value = 0.05
+    nodes.push(delay2)
+
+    const delay3 = context.createDelay(0.1)
+    delay3.delayTime.value = 0.07
+    nodes.push(delay3)
+
+    // Feedback for each delay
+    const feedback1 = context.createGain()
+    feedback1.gain.value = 0.5 * amount
+    nodes.push(feedback1)
+
+    const feedback2 = context.createGain()
+    feedback2.gain.value = 0.4 * amount
+    nodes.push(feedback2)
+
+    const feedback3 = context.createGain()
+    feedback3.gain.value = 0.3 * amount
+    nodes.push(feedback3)
+
+    // Mix reverb with original
+    const reverbMix = context.createGain()
+    reverbMix.gain.value = amount
+    nodes.push(reverbMix)
+
+    const dryGain = context.createGain()
+    dryGain.gain.value = 1.0 - amount
+    nodes.push(dryGain)
+
+    const merger = context.createGain()
+    merger.gain.value = 1.0
+    nodes.push(merger)
+
+    return nodes
+  }
+
+  // Create delay effect
+  createDelay(context, amount) {
+    const nodes = []
+
+    const delay = context.createDelay(5.0) // Max 5 second delay
+    delay.delayTime.value = 0.3 * amount // Scale with preset
+    nodes.push(delay)
+
+    const feedback = context.createGain()
+    feedback.gain.value = 0.4 * amount
+    nodes.push(feedback)
+
+    const delayMix = context.createGain()
+    delayMix.gain.value = amount
+    nodes.push(delayMix)
+
+    const dryGain = context.createGain()
+    dryGain.gain.value = 1.0 - amount
+    nodes.push(dryGain)
+
+    const merger = context.createGain()
+    merger.gain.value = 1.0
+    nodes.push(merger)
+
+    return nodes
+  }
+
   // Export processed audio
   async exportAudio() {
     if (!this.audioBuffer) return null
