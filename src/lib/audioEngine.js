@@ -491,30 +491,32 @@ class AudioEngine {
 
   // Export processed audio
   async exportAudio() {
-    if (!this.audioBuffer) return null
-    
+    // Use processed buffer if available, otherwise fallback to current buffer
+    const bufferToExport = this.processedBuffer || this.currentBuffer || this.audioBuffer
+    if (!bufferToExport) return null
+
     // Create offline context for rendering
     const offlineContext = new OfflineAudioContext(
-      this.audioBuffer.numberOfChannels,
-      this.audioBuffer.length,
-      this.audioBuffer.sampleRate
+      bufferToExport.numberOfChannels,
+      bufferToExport.length,
+      bufferToExport.sampleRate
     )
-    
+
     // Create processing chain in offline context
     const source = offlineContext.createBufferSource()
-    source.buffer = this.audioBuffer
-    
-    // Apply same processing
-    const compressor = offlineContext.createDynamicsCompressor()
+    source.buffer = bufferToExport
+
+    // Apply basic gain (processing already applied to processedBuffer)
     const gain = offlineContext.createGain()
-    
-    source.connect(compressor).connect(gain).connect(offlineContext.destination)
-    
+    gain.gain.value = 1.0
+
+    source.connect(gain).connect(offlineContext.destination)
+
     source.start(0)
-    
+
     // Render
     const renderedBuffer = await offlineContext.startRendering()
-    
+
     // Convert to WAV
     return this.audioBufferToWav(renderedBuffer)
   }
