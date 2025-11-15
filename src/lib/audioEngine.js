@@ -251,6 +251,42 @@ class AudioEngine {
     return dataArray
   }
 
+  // Process audio offline with full effects chain
+  async processAudio(preset) {
+    if (!this.audioBuffer) return
+
+    // Store original buffer for A/B comparison
+    this.originalBuffer = this.audioBuffer
+
+    // Create offline context for processing
+    const offlineContext = new OfflineAudioContext(
+      this.audioBuffer.numberOfChannels,
+      this.audioBuffer.length,
+      this.audioBuffer.sampleRate
+    )
+
+    // Create source
+    const source = offlineContext.createBufferSource()
+    source.buffer = this.audioBuffer
+
+    // Build complete processing chain
+    const nodes = this.buildOfflineChain(offlineContext, preset)
+
+    // Connect all nodes in sequence
+    source.connect(nodes[0]) // Start with high-pass
+    for (let i = 0; i < nodes.length - 1; i++) {
+      nodes[i].connect(nodes[i + 1])
+    }
+    nodes[nodes.length - 1].connect(offlineContext.destination)
+
+    // Start rendering
+    source.start(0)
+    this.processedBuffer = await offlineContext.startRendering()
+
+    // Set as current buffer for playback
+    this.currentBuffer = this.processedBuffer
+  }
+
   // Export processed audio
   async exportAudio() {
     if (!this.audioBuffer) return null
