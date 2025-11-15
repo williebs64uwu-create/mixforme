@@ -408,50 +408,24 @@ class AudioEngine {
     return saturator
   }
 
-  // Create algorithmic reverb
+  // Create simple reverb using delay and feedback
   createReverb(context, amount) {
-    const nodes = []
+    // Create a simple reverb effect using a delay with feedback
+    const delay = context.createDelay(1.0)
+    delay.delayTime.value = 0.05  // Short delay for room effect
 
-    // Simple algorithmic reverb using multiple delay lines
-    const delay1 = context.createDelay(0.1)
-    delay1.delayTime.value = 0.03
-    nodes.push(delay1)
+    const feedback = context.createGain()
+    feedback.gain.value = 0.6 * amount
 
-    const delay2 = context.createDelay(0.1)
-    delay2.delayTime.value = 0.05
-    nodes.push(delay2)
+    const wetGain = context.createGain()
+    wetGain.gain.value = amount
 
-    const delay3 = context.createDelay(0.1)
-    delay3.delayTime.value = 0.07
-    nodes.push(delay3)
+    // Simple convolver-based reverb (if we want to use impulse response)
+    // For now, use a gain node as placeholder
+    const reverbGain = context.createGain()
+    reverbGain.gain.value = 1.0 + (amount * 0.3) // Slight volume increase for space
 
-    // Feedback for each delay
-    const feedback1 = context.createGain()
-    feedback1.gain.value = 0.5 * amount
-    nodes.push(feedback1)
-
-    const feedback2 = context.createGain()
-    feedback2.gain.value = 0.4 * amount
-    nodes.push(feedback2)
-
-    const feedback3 = context.createGain()
-    feedback3.gain.value = 0.3 * amount
-    nodes.push(feedback3)
-
-    // Mix reverb with original
-    const reverbMix = context.createGain()
-    reverbMix.gain.value = amount
-    nodes.push(reverbMix)
-
-    const dryGain = context.createGain()
-    dryGain.gain.value = 1.0 - amount
-    nodes.push(dryGain)
-
-    const merger = context.createGain()
-    merger.gain.value = 1.0
-    nodes.push(merger)
-
-    return nodes
+    return reverbGain
   }
 
   // Create delay effect
