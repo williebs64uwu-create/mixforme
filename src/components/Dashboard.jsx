@@ -166,8 +166,21 @@ function Dashboard() {
 
   const handleABToggle = (mode) => {
     setABMode(mode)
-    // TODO: Switch between original and processed audio
-    console.log('Switched to mode:', mode)
+    if (!audioEngineRef.current || !isProcessed) return
+
+    // Stop current playback
+    audioEngineRef.current.stop()
+
+    // Switch buffer
+    if (mode === 'A') {
+      audioEngineRef.current.switchToOriginal()
+    } else {
+      audioEngineRef.current.switchToProcessed()
+    }
+
+    // Recreate processing chain for real-time adjustments
+    const preset = getPreset(selectedPreset)
+    audioEngineRef.current.createProcessingChain(preset)
   }
 
   const currentPreset = getPreset(selectedPreset)
