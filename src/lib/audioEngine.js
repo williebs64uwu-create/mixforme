@@ -136,15 +136,15 @@ class AudioEngine {
 
   // Connect source to processing chain
   connectSource() {
-    if (!this.audioBuffer || !this.compressorNode) return null
-    
+    if (!this.currentBuffer || !this.gainNode) return null
+
     // Create new source
     this.sourceNode = this.audioContext.createBufferSource()
-    this.sourceNode.buffer = this.audioBuffer
-    
+    this.sourceNode.buffer = this.currentBuffer
+
     // Connect to chain
-    this.sourceNode.connect(this.compressorNode)
-    
+    this.sourceNode.connect(this.gainNode)
+
     return this.sourceNode
   }
 
