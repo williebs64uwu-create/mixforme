@@ -1,0 +1,66 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        purple: {
+          950: '#1a0b2e',
+          900: '#2d1b4e',
+          800: '#3d2563',
+          700: '#4c2f7a',
+          600: '#6b46c1',
+          500: '#8b5cf6',
+          400: '#a78bfa',
+        },
+        gray: {
+          950: '#0a0a0f',
+          900: '#121218',
+          800: '#1a1a24',
+          700: '#2a2a3a',
+          600: '#3a3a4a',
+          500: '#5a5a6a',
+          400: '#8a8a9a',
+        },
+        silver: {
+          500: '#c0c0d0',
+          400: '#d0d0e0',
+          300: '#e0e0f0',
+        },
+      },
+      animation: {
+        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+        'slide-up': 'slide-up 0.5s ease-out',
+        'slide-in-right': 'slide-in-right 0.5s ease-out',
+        'fade-in': 'fade-in 0.3s ease-out',
+        'spin-slow': 'spin-slow 3s linear infinite',
+      },
+      keyframes: {
+        'pulse-glow': {
+          '0%, 100%': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)' },
+          '50%': { boxShadow: '0 0 30px rgba(139, 92, 246, 0.6)' },
+        },
+        'slide-up': {
+          from: { opacity: '0', transform: 'translateY(20px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        'slide-in-right': {
+          from: { opacity: '0', transform: 'translateX(20px)' },
+          to: { opacity: '1', transform: 'translateX(0)' },
+        },
+        'fade-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
+        'spin-slow': {
+          from: { transform: 'rotate(0deg)' },
+          to: { transform: 'rotate(360deg)' },
+        },
+      },
+    },
+  },
+  plugins: [],
+}
